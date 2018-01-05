@@ -1,0 +1,91 @@
+---
+title: 'Data Wrangling Exercise 1: Basic Data Manipulation'
+author: "Shyamala Gurumurthy"
+date: "December 28, 2017"
+output: 
+  html_document: 
+    df_print: paged
+    highlight: tango
+    theme: flatly
+---
+
+## Exercise
+Using R, clean the toy data set(showing product purchases from an electronics store) to make it easier to visualize and analyze.
+
+```{r setup, include=FALSE}
+library(knitr)
+library(magrittr)
+library(tidyverse)
+knitr::opts_chunk$set(cache=TRUE, message=FALSE)
+```
+
+### 0: Load the data in RStudio
+```{r}
+library(xlsx)
+toys <- read.xlsx("C:/Users/User/Desktop/R Practice/refine.xlsx", 1)
+head(toys)
+
+library(dplyr)
+toys <- tbl_df(toys)
+head(toys)
+```
+
+
+### 1: Clean up brand names
+```{r}
+library(stringr)
+pat_rep <- c("(.*)ps$" = "philips", "^ak(.*)" = "akzo",
+             "(.*)ver$" = "unilever", "(.*)ten$" = "van houten")
+toys_new <- toys %>%
+  mutate(company = str_replace_all(tolower(company), pat_rep)) %>%
+  rename(Product_Code_Name = Product.code...number.)
+
+toys_new %>%
+  group_by(company) %>%
+  top_n(n=2)
+```
+
+
+### 2: Separate product code and number
+```{r}
+library(tidyr)
+
+toys_new <- separate(toys_new,Product_Code_Name, c("product_code", "product_number"), sep="-")
+head(toys_new)
+```
+
+
+### 3: Add product categories
+```{r}
+pat_rep <- c("p" = "Smartphone", "v" = "TV",
+             "x" = "Laptop", "q" = "Tablet")
+toys_new %<>% 
+  mutate(product_category = product_code) %>%
+  mutate(product_category = str_replace_all(tolower(product_category), pat_rep))
+
+head(toys_new)
+```
+
+
+### 4: Add full address for geocoding
+```{r}
+toys_new <- unite(toys_new, "full_address", address, city, country, sep = ',')
+
+head(toys_new)
+```
+
+
+### 5: Create dummy variables for company and product category
+```{r}
+library(dummies)
+library(purrr)
+
+toys <- toys_new %>%
+  as.data.frame() %>%
+  dummy.data.frame(names = c("company", "product_category"), sep = '_') %>%
+  as_tibble() %>%
+  set_names(gsub(' ', '_', colnames(.))) %>%
+  set_names(tolower)
+
+head(toys)
+ ```
